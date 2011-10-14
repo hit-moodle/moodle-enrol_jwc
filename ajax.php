@@ -15,13 +15,13 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * This file processes AJAX enrolment actions and returns JSON for the cohort plugin
+ * This file processes AJAX enrolment actions and returns JSON for the jwc plugin
  *
  * The general idea behind this file is that any errors should throw exceptions
  * which will be returned and acted upon by the calling AJAX script.
  *
  * @package    enrol
- * @subpackage cohort
+ * @subpackage jwc
  * @copyright  2011 Sam Hemelryk
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -30,14 +30,14 @@ define('AJAX_SCRIPT', true);
 
 require('../../config.php');
 require_once($CFG->dirroot.'/enrol/locallib.php');
-require_once($CFG->dirroot.'/enrol/cohort/locallib.php');
+require_once($CFG->dirroot.'/enrol/jwc/locallib.php');
 require_once($CFG->dirroot.'/group/lib.php');
 
 // Must have the sesskey
 $id      = required_param('id', PARAM_INT); // course id
 $action  = required_param('action', PARAM_ACTION);
 
-$PAGE->set_url(new moodle_url('/enrol/cohort/ajax.php', array('id'=>$id, 'action'=>$action)));
+$PAGE->set_url(new moodle_url('/enrol/jwc/ajax.php', array('id'=>$id, 'action'=>$action)));
 
 $course = $DB->get_record('course', array('id'=>$id), '*', MUST_EXIST);
 $context = get_context_instance(CONTEXT_COURSE, $course->id, MUST_EXIST);
@@ -64,42 +64,42 @@ switch ($action) {
         $otheruserroles = optional_param('otherusers', false, PARAM_BOOL);
         $outcome->response = array_reverse($manager->get_assignable_roles($otheruserroles), true);
         break;
-    case 'getdefaultcohortrole': //TODO: use in ajax UI MDL-24280
-        $cohortenrol = enrol_get_plugin('cohort');
-        $outcome->response = $cohortenrol->get_config('roleid');
+    case 'getdefaultjwcrole': //TODO: use in ajax UI MDL-24280
+        $jwcenrol = enrol_get_plugin('jwc');
+        $outcome->response = $jwcenrol->get_config('roleid');
         break;
-    case 'getcohorts':
+    case 'getjwcs':
         require_capability('moodle/course:enrolconfig', $context);
-        $outcome->response = enrol_cohort_get_cohorts($manager);
+        $outcome->response = enrol_jwc_get_jwcs($manager);
         break;
-    case 'enrolcohort':
+    case 'enroljwc':
         require_capability('moodle/course:enrolconfig', $context);
-        require_capability('enrol/cohort:config', $context);
+        require_capability('enrol/jwc:config', $context);
         $roleid = required_param('roleid', PARAM_INT);
-        $cohortid = required_param('cohortid', PARAM_INT);
+        $jwcid = required_param('jwcid', PARAM_INT);
         
         $roles = $manager->get_assignable_roles();
-        $cohorts = enrol_cohort_get_cohorts($manager);
-        if (!array_key_exists($cohortid, $cohorts) || !array_key_exists($roleid, $roles)) {
-            throw new enrol_ajax_exception('errorenrolcohort');
+        $jwcs = enrol_jwc_get_jwcs($manager);
+        if (!array_key_exists($jwcid, $jwcs) || !array_key_exists($roleid, $roles)) {
+            throw new enrol_ajax_exception('errorenroljwc');
         }
-        $enrol = enrol_get_plugin('cohort');
-        $enrol->add_instance($manager->get_course(), array('customint1' => $cohortid, 'roleid' => $roleid));
-        enrol_cohort_sync($manager->get_course()->id);
+        $enrol = enrol_get_plugin('jwc');
+        $enrol->add_instance($manager->get_course(), array('customint1' => $jwcid, 'roleid' => $roleid));
+        enrol_jwc_sync($manager->get_course()->id);
         break;
-    case 'enrolcohortusers':
+    case 'enroljwcusers':
         require_capability('enrol/manual:enrol', $context);
         $roleid = required_param('roleid', PARAM_INT);
-        $cohortid = required_param('cohortid', PARAM_INT);
-        $result = enrol_cohort_enrol_all_users($manager, $cohortid, $roleid);
+        $jwcid = required_param('jwcid', PARAM_INT);
+        $result = enrol_jwc_enrol_all_users($manager, $jwcid, $roleid);
 
         $roles = $manager->get_assignable_roles();
-        $cohorts = enrol_cohort_get_cohorts($manager);
-        if (!array_key_exists($cohortid, $cohorts) || !array_key_exists($roleid, $roles)) {
-            throw new enrol_ajax_exception('errorenrolcohort');
+        $jwcs = enrol_jwc_get_jwcs($manager);
+        if (!array_key_exists($jwcid, $jwcs) || !array_key_exists($roleid, $roles)) {
+            throw new enrol_ajax_exception('errorenroljwc');
         }
         if ($result === false) {
-            throw new enrol_ajax_exception('errorenrolcohortusers');
+            throw new enrol_ajax_exception('errorenroljwcusers');
         }
         $outcome->success = true;
         $outcome->response->users = $result;

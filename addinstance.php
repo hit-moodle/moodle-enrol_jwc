@@ -16,17 +16,17 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Adds new instance of enrol_cohort to specified course.
+ * Adds new instance of enrol_jwc to specified course.
  *
  * @package    enrol
- * @subpackage cohort
+ * @subpackage jwc
  * @copyright  2010 Petr Skoda {@link http://skodak.org}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 require('../../config.php');
-require_once("$CFG->dirroot/enrol/cohort/addinstance_form.php");
-require_once("$CFG->dirroot/enrol/cohort/locallib.php");
+require_once("$CFG->dirroot/enrol/jwc/addinstance_form.php");
+require_once("$CFG->dirroot/enrol/jwc/locallib.php");
 
 $id = required_param('id', PARAM_INT); // course id
 
@@ -35,9 +35,9 @@ $context = get_context_instance(CONTEXT_COURSE, $course->id, MUST_EXIST);
 
 require_login($course);
 require_capability('moodle/course:enrolconfig', $context);
-require_capability('enrol/cohort:config', $context);
+require_capability('enrol/jwc:config', $context);
 
-$PAGE->set_url('/enrol/cohort/addinstance.php', array('id'=>$course->id));
+$PAGE->set_url('/enrol/jwc/addinstance.php', array('id'=>$course->id));
 $PAGE->set_pagelayout('admin');
 
 navigation_node::override_active_url(new moodle_url('/enrol/instances.php', array('id'=>$course->id)));
@@ -49,24 +49,24 @@ if ($courseadmin && $courseadmin->get('users') && $courseadmin->get('users')->ge
 }
 
 
-$enrol = enrol_get_plugin('cohort');
+$enrol = enrol_get_plugin('jwc');
 if (!$enrol->get_newinstance_link($course->id)) {
     redirect(new moodle_url('/enrol/instances.php', array('id'=>$course->id)));
 }
 
-$mform = new enrol_cohort_addinstance_form(NULL, $course);
+$mform = new enrol_jwc_addinstance_form(NULL, $course);
 
 if ($mform->is_cancelled()) {
     redirect(new moodle_url('/enrol/instances.php', array('id'=>$course->id)));
 
 } else if ($data = $mform->get_data()) {
-    $enrol->add_instance($course, array('customint1'=>$data->cohortid, 'roleid'=>$data->roleid));
-    enrol_cohort_sync($course->id);
+    $enrol->add_instance($course, array('customint1'=>$data->jwcid, 'roleid'=>$data->roleid));
+    enrol_jwc_sync($course->id);
     redirect(new moodle_url('/enrol/instances.php', array('id'=>$course->id)));
 }
 
 $PAGE->set_heading($course->fullname);
-$PAGE->set_title(get_string('pluginname', 'enrol_cohort'));
+$PAGE->set_title(get_string('pluginname', 'enrol_jwc'));
 
 echo $OUTPUT->header();
 $mform->display();

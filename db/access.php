@@ -16,10 +16,10 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Capabilities for cohort access plugin.
+ * Capabilities for jwc access plugin.
  *
  * @package    enrol
- * @subpackage cohort
+ * @subpackage jwc
  * @copyright  2010 Petr Skoda {@link http://skodak.org}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -28,7 +28,7 @@ defined('MOODLE_INTERNAL') || die();
 
 $capabilities = array(
 
-    'enrol/cohort:config' => array(
+    'enrol/jwc:config' => array(
 
         'captype' => 'write',
         'contextlevel' => CONTEXT_COURSE,

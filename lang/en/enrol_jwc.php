@@ -16,14 +16,14 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Strings for component 'enrol_cohort', language 'en', branch 'MOODLE_20_STABLE'
+ * Strings for component 'enrol_jwc', language 'en', branch 'MOODLE_20_STABLE'
  *
  * @package    enrol
- * @subpackage cohort
+ * @subpackage jwc
  * @copyright  2010 Petr Skoda  {@link http://skodak.org}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-$string['cohort:config'] = 'Configure cohort instances';
-$string['pluginname'] = 'Cohort sync';
-$string['pluginname_desc'] = 'Cohort enrolment plugin synchronises cohort members with course participants.';
+$string['jwc:config'] = '配置教务处选课实例';
+$string['pluginname'] = '同步教务处';
+$string['pluginname_desc'] = '教务处选课插件同步教务管理系统的选课到本站。';

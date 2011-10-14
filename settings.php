@@ -19,7 +19,7 @@
  * Cohort enrolment plugin settings and presets.
  *
  * @package    enrol
- * @subpackage cohort
+ * @subpackage jwc
  * @copyright  2010 Petr Skoda {@link http://skodak.org}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -29,7 +29,7 @@ defined('MOODLE_INTERNAL') || die();
 if ($ADMIN->fulltree) {
 
     //--- general settings -----------------------------------------------------------------------------------
-    $settings->add(new admin_setting_heading('enrol_cohort_settings', '', get_string('pluginname_desc', 'enrol_cohort')));
+    $settings->add(new admin_setting_heading('enrol_jwc_settings', '', get_string('pluginname_desc', 'enrol_jwc')));
 
 
     //--- enrol instance defaults ----------------------------------------------------------------------------
@@ -37,7 +37,7 @@ if ($ADMIN->fulltree) {
         $options = get_default_enrol_roles(get_context_instance(CONTEXT_SYSTEM));
         $student = get_archetype_roles('student');
         $student = reset($student);
-        $settings->add(new admin_setting_configselect('enrol_cohort/roleid',
+        $settings->add(new admin_setting_configselect('enrol_jwc/roleid',
             get_string('defaultrole', 'role'), '', $student->id, $options));
     }
 }

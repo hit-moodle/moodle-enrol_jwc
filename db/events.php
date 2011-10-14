@@ -19,7 +19,7 @@
  * Cohort enrolment plugin event handler definition.
  *
  * @package    enrol
- * @subpackage cohort
+ * @subpackage jwc
  * @copyright  2010 Petr Skoda {@link http://skodak.org}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -28,23 +28,23 @@ defined('MOODLE_INTERNAL') || die();
 
 /* List of handlers */
 $handlers = array (
-    'cohort_member_added' => array (
-        'handlerfile'      => '/enrol/cohort/locallib.php',
-        'handlerfunction'  => array('enrol_cohort_handler', 'member_added'),
+    'jwc_member_added' => array (
+        'handlerfile'      => '/enrol/jwc/locallib.php',
+        'handlerfunction'  => array('enrol_jwc_handler', 'member_added'),
         'schedule'         => 'instant',
         'internal'         => 1,
     ),
 
-    'cohort_member_removed' => array (
-        'handlerfile'      => '/enrol/cohort/locallib.php',
-        'handlerfunction'  => array('enrol_cohort_handler', 'member_removed'),
+    'jwc_member_removed' => array (
+        'handlerfile'      => '/enrol/jwc/locallib.php',
+        'handlerfunction'  => array('enrol_jwc_handler', 'member_removed'),
         'schedule'         => 'instant',
         'internal'         => 1,
     ),
 
-    'cohort_deleted' => array (
-        'handlerfile'      => '/enrol/cohort/locallib.php',
-        'handlerfunction'  => array('enrol_cohort_handler', 'deleted'),
+    'jwc_deleted' => array (
+        'handlerfile'      => '/enrol/jwc/locallib.php',
+        'handlerfunction'  => array('enrol_jwc_handler', 'deleted'),
         'schedule'         => 'instant',
         'internal'         => 1,
     ),
