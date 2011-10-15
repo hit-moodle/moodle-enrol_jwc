@@ -29,19 +29,14 @@ defined('MOODLE_INTERNAL') || die();
 require_once($CFG->dirroot . '/enrol/locallib.php');
 
 class jwc_helper {
-    static public function is_valid_coursenumber($coursenumber, $semester = '') {
-        //jwc_helper::get_courses($coursenumber, $semester);
-        return true;
-    }
-
     /**
      * 得到编号为coursenumber的所有课程信息
      *
      * 返回数组
      * 如编号正确但无对应课程，返回空数组
-     * 如编号不正确，返回false
+     * 如遇错误，返回false，错误信息存入$error
      */
-    static public function get_courses($coursenumber, $semester = '') {
+    static public function get_courses($coursenumber, $semester = '', &$error = null) {
         $params = array();
         if (empty($semester)) {
             $params['xq'] = get_config('enrol_jwc', 'semester');
@@ -49,8 +44,14 @@ class jwc_helper {
             $params['xq'] = $semester;
         }
         $params['id'] = $coursenumber;
-        echo jwc_helper::access('http://xscj.hit.edu.cn/hitjwgl/lxw/getinfoD.asp', $params);
-        die;
+        $jwcstr = jwc_helper::access('http://xscj.hit.edu.cn/hitjwgl/lxw/getinfoD.asp', $params);
+
+        if ($error = jwc_helper::get_error($jwcstr)) {
+            return false;
+        }
+
+        $xml = new SimpleXMLElement($jwcstr);
+        return $xml->info->course;
     }
 
     static protected function access($url_base, $params) {
@@ -74,8 +75,15 @@ class jwc_helper {
         $param .= "&sign=$sign";
 
         $url = $url_base.'?'.$param;
-        echo $url;
         return download_file_content($url);
+    }
+
+    static protected function get_error($jwcstr) {
+        $info = new SimpleXMLElement($jwcstr);
+        if ($info->retu->flag == 1) {
+            return false; // no error
+        }
+        return $info->retu->errorinfo;
     }
 }
 
@@ -92,7 +100,17 @@ function enrol_jwc_sync($courseid = NULL) {
 
     $jwc = enrol_get_plugin('jwc');
 
-    $onecourse = $courseid ? "AND e.courseid = :courseid" : "";
+    if (enrol_is_enabled('jwc')) {
+        $instances = $DB->get_records('enrol', array('enrol' => 'jwc', 'status' => ENROL_INSTANCE_ENABLED));
+        foreach ($instances as $instance) {
+            $courses = jwc_helper::get_courses($instance->customchar1);
+            if (!is_array($courses)) { // 出错
+                $DB->set_field('enrol', 'customchar2', $courses, array('id' => $instance->id));
+                continue; // skip this instance
+            }
+
+        }
+    }
 
     // iterate through all not enrolled yet users
     if (enrol_is_enabled('jwc')) {

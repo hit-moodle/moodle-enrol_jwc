@@ -66,8 +66,9 @@ class enrol_jwc_addinstance_form extends moodleform {
         $errors = parent::validation($data, $files);
 
         require_once("$CFG->dirroot/enrol/jwc/locallib.php");
-        if (!jwc_helper::is_valid_coursenumber($data['coursenumber'])) {
-            $errors['coursenumber'] = '无法在教务处查询到此课程编号的信息';
+        $err = '';
+        if (!jwc_helper::get_courses($data['coursenumber'], '', $err)) {
+            $errors['coursenumber'] = '在教务处查询此课程编号出错：'.$err;
         }
         return $errors;
     }
