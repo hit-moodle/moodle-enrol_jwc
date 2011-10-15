@@ -38,29 +38,15 @@ class enrol_jwc_addinstance_form extends moodleform {
 
         $enrol = enrol_get_plugin('jwc');
 
-        $jwcs = array('' => get_string('choosedots'));
-        list($sqlparents, $params) = $DB->get_in_or_equal(get_parent_contexts($coursecontext));
-        $sql = "SELECT id, name, contextid
-                  FROM {jwc}
-                 WHERE contextid $sqlparents
-              ORDER BY name ASC";
-        $rs = $DB->get_recordset_sql($sql, $params);
-        foreach ($rs as $c) {
-            $context = get_context_instance_by_id($c->contextid);
-            if (!has_capability('moodle/jwc:view', $context)) {
-                continue;
-            }
-            $jwcs[$c->id] = format_string($c->name);
-        }
-        $rs->close();
-
         $roles = get_assignable_roles($coursecontext);
         $roles = array_reverse($roles, true); // descending default sortorder
 
         $mform->addElement('header','general', get_string('pluginname', 'enrol_jwc'));
 
-        $mform->addElement('select', 'jwcid', get_string('jwc', 'jwc'), $jwcs);
-        $mform->addRule('jwcid', get_string('required'), 'required', null, 'client');
+        $mform->addElement('text', 'coursenumber', get_string('coursenumber', 'enrol_jwc'));
+        $mform->setType('coursenumber', PARAM_ALPHANUM);
+        $mform->addHelpButton('coursenumber', 'coursenumber', 'enrol_jwc');
+        $mform->addRule('coursenumber', get_string('required'), 'required', null, 'client');
 
         $mform->addElement('select', 'roleid', get_string('role'), $roles);
         $mform->addRule('roleid', get_string('required'), 'required', null, 'client');
@@ -74,5 +60,15 @@ class enrol_jwc_addinstance_form extends moodleform {
         $this->set_data(array('id'=>$course->id));
     }
 
-    //TODO: validate duplicate role-jwc does not exist
+    function validation($data, $files) {
+        global $CFG;
+
+        $errors = parent::validation($data, $files);
+
+        require_once("$CFG->dirroot/enrol/jwc/locallib.php");
+        if (!jwc_helper::is_valid_coursenumber($data['coursenumber'])) {
+            $errors['coursenumber'] = '无法在教务处查询到此课程编号的信息';
+        }
+        return $errors;
+    }
 }

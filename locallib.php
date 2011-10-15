@@ -28,6 +28,57 @@ defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->dirroot . '/enrol/locallib.php');
 
+class jwc_helper {
+    static public function is_valid_coursenumber($coursenumber, $semester = '') {
+        //jwc_helper::get_courses($coursenumber, $semester);
+        return true;
+    }
+
+    /**
+     * 得到编号为coursenumber的所有课程信息
+     *
+     * 返回数组
+     * 如编号正确但无对应课程，返回空数组
+     * 如编号不正确，返回false
+     */
+    static public function get_courses($coursenumber, $semester = '') {
+        $params = array();
+        if (empty($semester)) {
+            $params['xq'] = get_config('enrol_jwc', 'semester');
+        } else {
+            $params['xq'] = $semester;
+        }
+        $params['id'] = $coursenumber;
+        echo jwc_helper::access('http://xscj.hit.edu.cn/hitjwgl/lxw/getinfoD.asp', $params);
+        die;
+    }
+
+    static protected function access($url_base, $params) {
+        if (empty($params)) {
+            return false;
+        }
+
+        $param = '';
+        foreach ($params as $var => $value) {
+            if (empty($param)) {
+                $param = "$var=$value";
+            } else {
+                $param .= "&$var=$value";
+            }
+        }
+
+        $param = textlib_get_instance()->convert($param, 'UTF-8', 'GB18030');
+
+        // 添加数字签名
+        $sign = md5("jwc{$param}lxw");
+        $param .= "&sign=$sign";
+
+        $url = $url_base.'?'.$param;
+        echo $url;
+        return download_file_content($url);
+    }
+}
+
 /**
  * Sync all jwc course links.
  * @param int $courseid one course, empty mean all
@@ -128,89 +179,3 @@ function enrol_jwc_sync($courseid = NULL) {
 
 }
 
-/**
- * Enrols all of the users in a jwc through a manual plugin instance.
- *
- * In order for this to succeed the course must contain a valid manual
- * enrolment plugin instance that the user has permission to enrol users through.
- *
- * @global moodle_database $DB
- * @param course_enrolment_manager $manager
- * @param int $jwcid
- * @param int $roleid
- * @return int
- */
-function enrol_jwc_enrol_all_users(course_enrolment_manager $manager, $jwcid, $roleid) {
-    global $DB;
-    $context = $manager->get_context();
-    require_capability('moodle/course:enrolconfig', $context);
-
-    $instance = false;
-    $instances = $manager->get_enrolment_instances();
-    foreach ($instances as $i) {
-        if ($i->enrol == 'manual') {
-            $instance = $i;
-            break;
-        }
-    }
-    $plugin = enrol_get_plugin('manual');
-    if (!$instance || !$plugin || !$plugin->allow_enrol($instance) || !has_capability('enrol/'.$plugin->get_name().':enrol', $context)) {
-        return false;
-    }
-    $sql = "SELECT com.userid
-              FROM {jwc_members} com
-         LEFT JOIN (
-                SELECT *
-                FROM {user_enrolments} ue
-                WHERE ue.enrolid = :enrolid
-                 ) ue ON ue.userid=com.userid
-             WHERE com.jwcid = :jwcid AND ue.id IS NULL";
-    $params = array('jwcid' => $jwcid, 'enrolid' => $instance->id);
-    $rs = $DB->get_recordset_sql($sql, $params);
-    $count = 0;
-    foreach ($rs as $user) {
-        $count++;
-        $plugin->enrol_user($instance, $user->userid, $roleid);
-    }
-    $rs->close();
-    return $count;
-}
-
-/**
- * Gets all the jwcs the user is able to view.
- *
- * @global moodle_database $DB
- * @return array
- */
-function enrol_jwc_get_jwcs(course_enrolment_manager $manager) {
-    global $DB;
-    $context = $manager->get_context();
-    $jwcs = array();
-    $instances = $manager->get_enrolment_instances();
-    $enrolled = array();
-    foreach ($instances as $instance) {
-        if ($instance->enrol == 'jwc') {
-            $enrolled[] = $instance->customint1;
-        }
-    }
-    list($sqlparents, $params) = $DB->get_in_or_equal(get_parent_contexts($context));
-    $sql = "SELECT id, name, contextid
-              FROM {jwc}
-             WHERE contextid $sqlparents
-          ORDER BY name ASC";
-    $rs = $DB->get_recordset_sql($sql, $params);
-    foreach ($rs as $c) {
-        $context = get_context_instance_by_id($c->contextid);
-        if (!has_capability('moodle/jwc:view', $context)) {
-            continue;
-        }
-        $jwcs[$c->id] = array(
-            'jwcid'=>$c->id,
-            'name'=>format_string($c->name),
-            'users'=>$DB->count_records('jwc_members', array('jwcid'=>$c->id)),
-            'enrolled'=>in_array($c->id, $enrolled)
-        );
-    }
-    $rs->close();
-    return $jwcs;
-}

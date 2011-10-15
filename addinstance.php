@@ -60,7 +60,7 @@ if ($mform->is_cancelled()) {
     redirect(new moodle_url('/enrol/instances.php', array('id'=>$course->id)));
 
 } else if ($data = $mform->get_data()) {
-    $enrol->add_instance($course, array('customint1'=>$data->jwcid, 'roleid'=>$data->roleid));
+    $enrol->add_instance($course, array('customchar1'=>$data->coursenumber, 'roleid'=>$data->roleid));
     enrol_jwc_sync($course->id);
     redirect(new moodle_url('/enrol/instances.php', array('id'=>$course->id)));
 }

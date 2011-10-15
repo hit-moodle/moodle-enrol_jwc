@@ -52,7 +52,7 @@ class enrol_jwc_plugin extends enrol_plugin {
                 $role = get_string('error');
             }
 
-            return get_string('pluginname', 'enrol_'.$enrol) . ' (' . format_string($DB->get_field('jwc', 'name', array('id'=>$instance->customint1))) . ' - ' . $role .')';
+            return get_string('pluginname', 'enrol_'.$enrol) . ' (' . format_string($DB->get_field('enrol', 'customchar1', array('id'=>$instance->id))) . ' - ' . $role .')';
         } else {
             return format_string($instance->name);
         }
@@ -72,8 +72,7 @@ class enrol_jwc_plugin extends enrol_plugin {
     }
 
     /**
-     * Given a courseid this function returns true if the user is able to enrol or configure jwcs
-     * AND there are jwcs that the user can view.
+     * Given a courseid this function returns true if the user is able to enrol or configure jwc
      *
      * @param int $courseid
      * @return bool
@@ -85,19 +84,8 @@ class enrol_jwc_plugin extends enrol_plugin {
         if (!has_capability('moodle/course:enrolconfig', $coursecontext) or !has_capability('enrol/jwc:config', $coursecontext)) {
             return false;
         }
-        list($sqlparents, $params) = $DB->get_in_or_equal(get_parent_contexts($coursecontext));
-        $sql = "SELECT id, contextid
-                  FROM {jwc}
-                 WHERE contextid $sqlparents
-              ORDER BY name ASC";
-        $jwcs = $DB->get_records_sql($sql, $params);
-        foreach ($jwcs as $c) {
-            $context = get_context_instance_by_id($c->contextid);
-            if (has_capability('moodle/jwc:view', $context)) {
-                return true;
-            }
-        }
-        return false;
+
+        return true;
     }
 
     /**

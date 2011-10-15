@@ -37,6 +37,8 @@ if ($ADMIN->fulltree) {
         $options = get_default_enrol_roles(get_context_instance(CONTEXT_SYSTEM));
         $student = get_archetype_roles('student');
         $student = reset($student);
+        $settings->add(new admin_setting_configselect('enrol_jwc/roleid',
+            get_string('defaultrole', 'role'), '', $student->id, $options));
         $settings->add(new admin_setting_configtext('enrol_jwc/semester',
             '当前学期', '“2011秋季，2012春季”之类，与教务系统必须相符。每学期第一周必须修改设置。', '20XXＸ季'));
     }
