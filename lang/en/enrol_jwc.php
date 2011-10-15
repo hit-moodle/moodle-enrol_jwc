@@ -25,5 +25,5 @@
  */
 
 $string['jwc:config'] = '配置教务处选课实例';
-$string['pluginname'] = '同步教务处';
+$string['pluginname'] = '教务处同步';
 $string['pluginname_desc'] = '教务处选课插件同步教务管理系统的选课到本站。';
