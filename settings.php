@@ -38,9 +38,17 @@ if ($ADMIN->fulltree) {
         $student = get_archetype_roles('student');
         $student = reset($student);
         $settings->add(new admin_setting_configselect('enrol_jwc/roleid',
-            get_string('defaultrole', 'role'), '', $student->id, $options));
+            '学生角色', '', $student->id, $options));
+        $teacher = get_archetype_roles('editingteacher');
+        $teacher = reset($teacher);
+        $settings->add(new admin_setting_configselect('enrol_jwc/teacherroleid',
+            '教师角色', '', $teacher->id, $options));
         $settings->add(new admin_setting_configtext('enrol_jwc/semester',
             '当前学期', '“2011秋季，2012春季”之类，与教务系统必须相符。每学期第一周必须修改设置。', '20XXＸ季'));
+        $settings->add(new admin_setting_configtext('enrol_jwc/signprefix',
+            '签名前缀', '访问教务处数字签名的前缀', ''));
+        $settings->add(new admin_setting_configtext('enrol_jwc/signsuffix',
+            '签名后缀', '访问教务处数字签名的后缀', ''));
     }
 }
 

@@ -48,9 +48,8 @@ class enrol_jwc_addinstance_form extends moodleform {
         $mform->addHelpButton('coursenumber', 'coursenumber', 'enrol_jwc');
         $mform->addRule('coursenumber', get_string('required'), 'required', null, 'client');
 
-        $mform->addElement('select', 'roleid', get_string('role'), $roles);
-        $mform->addRule('roleid', get_string('required'), 'required', null, 'client');
-        $mform->setDefault('roleid', $enrol->get_config('roleid'));
+        $mform->addElement('hidden', 'roleid', $enrol->get_config('roleid'));
+        $mform->setType('roleid', PARAM_INT);
 
         $mform->addElement('hidden', 'id', null);
         $mform->setType('id', PARAM_INT);

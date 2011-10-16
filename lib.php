@@ -52,7 +52,7 @@ class enrol_jwc_plugin extends enrol_plugin {
                 $role = get_string('error');
             }
 
-            return get_string('pluginname', 'enrol_'.$enrol) . ' (' . format_string($DB->get_field('enrol', 'customchar2', array('id'=>$instance->id))) . ' - ' . $role .')';
+            return get_string('pluginname', 'enrol_'.$enrol) . ' (' . format_string($instance->customchar1.'-'.$instance->customchar2) . ')';
         } else {
             return format_string($instance->name);
         }
