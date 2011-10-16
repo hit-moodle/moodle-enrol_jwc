@@ -125,45 +125,6 @@ class enrol_jwc_plugin extends enrol_plugin {
         }
 
     }
-
-    /**
-     * Returns a button to enrol a jwc or its users through the manual enrolment plugin.
-     *
-     * This function also adds a quickenrolment JS ui to the page so that users can be enrolled
-     * via AJAX.
-     *
-     * @param course_enrolment_manager $manager
-     * @return enrol_user_button
-     */
-    public function get_manual_enrol_button(course_enrolment_manager $manager) {
-        $course = $manager->get_course();
-        if (!$this->can_add_new_instances($course->id)) {
-            return false;
-        }
-
-        $jwcurl = new moodle_url('/enrol/jwc/addinstance.php', array('id' => $course->id));
-        $button = new enrol_user_button($jwcurl, get_string('enroljwc', 'enrol'), 'get');
-        $button->class .= ' enrol_jwc_plugin';
-
-        $button->strings_for_js(array('enrol','synced','enroljwc','enroljwcusers'), 'enrol');
-        $button->strings_for_js('assignroles', 'role');
-        $button->strings_for_js('jwc', 'jwc');
-        $button->strings_for_js('users', 'moodle');
-
-        // No point showing this at all if the user cant manually enrol users
-        $hasmanualinstance = has_capability('enrol/manual:enrol', $manager->get_context()) && $manager->has_instance('manual');
-
-        $modules = array('moodle-enrol_jwc-quickenrolment', 'moodle-enrol_jwc-quickenrolment-skin');
-        $function = 'M.enrol_jwc.quickenrolment.init';
-        $arguments = array(
-            'courseid'        => $course->id,
-            'ajaxurl'         => '/enrol/jwc/ajax.php',
-            'url'             => $manager->get_moodlepage()->url->out(false),
-            'manualEnrolment' => $hasmanualinstance);
-        $button->require_yui_module($modules, $function, array($arguments));
-
-        return $button;
-    }
 }
 
 
