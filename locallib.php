@@ -81,6 +81,8 @@ class jwc_helper {
     }
 
     protected function access($url_base, $params) {
+        global $CFG;
+
         if (empty($params)) {
             return false;
         }
@@ -103,6 +105,8 @@ class jwc_helper {
         $param .= "&sign=$sign";
 
         $url = $url_base.'?'.$param;
+
+        require_once("$CFG->libdir/filelib.php");
         return download_file_content($url);
     }
 
