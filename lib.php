@@ -107,8 +107,9 @@ class enrol_jwc_plugin extends enrol_plugin {
             return;
         }
 
-        require_once("$CFG->dirroot/enrol/jwc/locallib.php");
-        enrol_jwc_sync();
+        // 暂时禁用cron。将来通过是否有数据更改来决定cron同步周期
+        // require_once("$CFG->dirroot/enrol/jwc/locallib.php");
+        // enrol_jwc_sync();
     }
 
     /**
