@@ -99,11 +99,31 @@ class enrol_jwc_plugin extends enrol_plugin {
      * @return void
      */
     public function cron() {
-        global $CFG;
+        global $DB, $CFG;
 
         // purge all roles if jwc sync disabled, those can be recreated later here in cron
         if (!enrol_is_enabled('jwc')) {
             role_unassign_all(array('component'=>'jwc_enrol'));
+            return;
+        }
+
+        // 管理员可以设定清除所有选课
+        if ($this->get_config('unenrolall')) {
+            $instances = $DB->get_records('enrol', array('enrol' => 'jwc'));
+            foreach ($instances as $instance) {
+                //first unenrol all users
+                $participants = $DB->get_recordset('user_enrolments', array('enrolid'=>$instance->id));
+                foreach ($participants as $participant) {
+                    $this->unenrol_user($instance, $participant->userid);
+                }
+                $participants->close();
+
+                // now clean up all remainders that were not removed correctly
+                $DB->delete_records('role_assignments', array('itemid'=>$instance->id, 'component'=>'jwc'));
+                $DB->delete_records('user_enrolments', array('enrolid'=>$instance->id));
+            }
+
+            $this->set_config('unenrolall', 0);
             return;
         }
 

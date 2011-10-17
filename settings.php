@@ -49,6 +49,8 @@ if ($ADMIN->fulltree) {
             '签名前缀', '访问教务处数字签名的前缀', ''));
         $settings->add(new admin_setting_configtext('enrol_jwc/signsuffix',
             '签名后缀', '访问教务处数字签名的后缀', ''));
+        $settings->add(new admin_setting_configcheckbox('enrol_jwc/unenrolall',
+            '清除所有选课', '<strong>慎重！！！</strong>勾选后，在下次cron运行时，会把所有已经同步的选课都清理掉。清理之后，此选项被自动禁用。应该只在每学期初设一下此选项。', 0));
     }
 }
 
