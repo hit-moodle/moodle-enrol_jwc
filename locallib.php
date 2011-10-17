@@ -221,10 +221,12 @@ function enrol_jwc_sync_xk($xkid, $instance) {
         }
 
         // 取消教务处删除的选课
-        $where = "enrolid = $instance->id AND userid NOT IN (" . implode(',', $enrolable_userids) . ')';
-        $ues = $DB->get_records_select('user_enrolments', $where);
-        foreach ($ues as $ue) {
-            $jwc_enrol->unenrol_user($instance, $ue->userid);
+        if (!empty($enrolable_userids)) {
+            $where = "enrolid = $instance->id AND userid NOT IN (" . implode(',', $enrolable_userids) . ')';
+            $ues = $DB->get_records_select('user_enrolments', $where);
+            foreach ($ues as $ue) {
+                $jwc_enrol->unenrol_user($instance, $ue->userid);
+            }
         }
     }
 }
