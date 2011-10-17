@@ -78,10 +78,16 @@ class enrol_jwc_plugin extends enrol_plugin {
      * @return bool
      */
     protected function can_add_new_instances($courseid) {
-        global $DB;
+        global $DB, $CFG;
 
         $coursecontext = get_context_instance(CONTEXT_COURSE, $courseid);
         if (!has_capability('moodle/course:enrolconfig', $coursecontext) or !has_capability('enrol/jwc:config', $coursecontext)) {
+            return false;
+        }
+
+        require_once("$CFG->dirroot/enrol/jwc/locallib.php");
+        if (!enrol_jwc_get_cas_teachers($courseid)) {
+            // 课程中必须有使用cas认证的教师
             return false;
         }
 

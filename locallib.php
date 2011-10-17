@@ -135,9 +135,6 @@ function enrol_jwc_sync($courseid = NULL) {
     // unfortunately this may take a long time
     @set_time_limit(0); //if this fails during upgrade we can continue from cron, no big deal
 
-    $jwc_enrol = enrol_get_plugin('jwc');
-    $teacherroleid = $jwc_enrol->get_config('teacherroleid');
-
     $jwc = new jwc_helper();
 
     if (enrol_is_enabled('jwc')) {
@@ -153,11 +150,8 @@ function enrol_jwc_sync($courseid = NULL) {
         $params['status'] = ENROL_INSTANCE_ENABLED;
         $instances = $DB->get_records_select('enrol', $select, $params);
         foreach ($instances as $instance) {
-            $context = get_context_instance(CONTEXT_COURSE, $instance->courseid);
-
             // 课程必须有cas认证的教师
-            $where = 'auth = :auth AND id IN (SELECT userid FROM {role_assignments} WHERE roleid = :roleid AND contextid = :contextid )';
-            $teachers = $DB->get_records_select('user', $where, array('auth' => 'cas', 'roleid' => $teacherroleid, 'contextid' => $context->id));
+            $teachers = enrol_jwc_get_cas_teachers($instance->courseid);
             if (empty($teachers)) {
                 $DB->set_field('enrol', 'customchar2', '此课程没有使用HITID的教师', array('id' => $instance->id));
                 continue;
@@ -235,3 +229,13 @@ function enrol_jwc_sync_xk($xkid, $instance) {
     }
 }
 
+function enrol_jwc_get_cas_teachers($courseid) {
+    global $DB;
+
+    $jwc_enrol = enrol_get_plugin('jwc');
+    $teacherroleid = $jwc_enrol->get_config('teacherroleid');
+    $context = get_context_instance(CONTEXT_COURSE, $courseid);
+
+    $where = 'auth = :auth AND id IN (SELECT userid FROM {role_assignments} WHERE roleid = :roleid AND contextid = :contextid )';
+    return $DB->get_records_select('user', $where, array('auth' => 'cas', 'roleid' => $teacherroleid, 'contextid' => $context->id));
+}
