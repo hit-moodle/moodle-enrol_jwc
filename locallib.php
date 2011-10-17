@@ -29,15 +29,17 @@ defined('MOODLE_INTERNAL') || die();
 require_once($CFG->dirroot . '/enrol/locallib.php');
 
 class jwc_helper {
+    public $errormsg;
+
     /**
      * 得到编号为coursenumber的所有课程信息
      *
      * 如果$semester为空，表示访问当前学期
      * 返回数组，成员是课程对象
      * 如编号正确但无对应课程，返回空数组
-     * 如遇错误，返回false，错误信息存入$error
+     * 如遇错误，返回false
      */
-    static public function get_courses($coursenumber, $semester, &$error) {
+    public function get_courses($coursenumber, $semester = '') {
         $params = array();
         if (empty($semester)) {
             $params['xq'] = get_config('enrol_jwc', 'semester');
@@ -45,9 +47,9 @@ class jwc_helper {
             $params['xq'] = $semester;
         }
         $params['id'] = $coursenumber;
-        $jwcstr = jwc_helper::access('http://xscj.hit.edu.cn/hitjwgl/lxw/getinfoD.asp', $params);
+        $jwcstr = $this->access('http://xscj.hit.edu.cn/hitjwgl/lxw/getinfoD.asp', $params);
 
-        if ($error = jwc_helper::get_error($jwcstr)) {
+        if ($this->has_error($jwcstr)) {
             return false;
         }
 
@@ -60,7 +62,25 @@ class jwc_helper {
         return $courses;
     }
 
-    static protected function access($url_base, $params) {
+    public function get_students($xkid) {
+        $params = array();
+        $params['id'] = $xkid;
+        $jwcstr = $this->access('http://xscj.hit.edu.cn/hitjwgl/lxw/getinfoC.asp', $params);
+
+        if ($error = $this->has_error($jwcstr)) {
+            return false;
+        }
+
+        $info = new SimpleXMLElement($jwcstr);
+        $students = array();
+        foreach ($info->stud->item as $item) {
+            $students[] = $item;
+        }
+
+        return $students;
+    }
+
+    protected function access($url_base, $params) {
         if (empty($params)) {
             return false;
         }
@@ -86,12 +106,21 @@ class jwc_helper {
         return download_file_content($url);
     }
 
-    static protected function get_error($jwcstr) {
-        $info = new SimpleXMLElement($jwcstr);
-        if ($info->retu->flag == 1) {
-            return false; // no error
+    protected function has_error($jwcstr) {
+        $result = false; // no error
+
+        if ($jwcstr === false) {
+            $this->errormsg = '访问教务处网站出错';
+            $result = true;
+        } else {
+            $info = new SimpleXMLElement($jwcstr);
+            if ($info->retu->flag == 0) {
+                $this->errormsg = $info->retu->errorinfo;
+                $result = true;
+            }
         }
-        return $info->retu->errorinfo;
+
+        return $result;
     }
 }
 
@@ -106,8 +135,10 @@ function enrol_jwc_sync($courseid = NULL) {
     // unfortunately this may take a long time
     @set_time_limit(0); //if this fails during upgrade we can continue from cron, no big deal
 
-    $jwc = enrol_get_plugin('jwc');
-    $teacherroleid = $jwc->get_config('teacherroleid');
+    $jwc_enrol = enrol_get_plugin('jwc');
+    $teacherroleid = $jwc_enrol->get_config('teacherroleid');
+
+    $jwc = new jwc_helper();
 
     if (enrol_is_enabled('jwc')) {
         $params = array();
@@ -133,11 +164,10 @@ function enrol_jwc_sync($courseid = NULL) {
             }
 
             // 从教务处获取所有使用该编号的课程
-            $error = '';
-            $courses = jwc_helper::get_courses($instance->customchar1, '', $error);
+            $courses = $jwc->get_courses($instance->customchar1);
             if (!$courses) { // 出错
-                $DB->set_field('enrol', 'customchar2', $error, array('id' => $instance->id));
-                continue; // skip this instance
+                $DB->set_field('enrol', 'customchar2', $jwc->errormsg, array('id' => $instance->id));
+                continue; // skip this instance. 就算出错，也别清理选课，以免意外。管理员更改学期名时再清理所有选课
             }
 
             // 匹配教师姓名，找出可同步的课程
@@ -166,91 +196,42 @@ function enrol_jwc_sync($courseid = NULL) {
     }
 }
 
-function enrol_jwc_sync_xk($xkid, $enrol_instance) {
+/**
+ * 同步教务处的选课过来
+ */
+function enrol_jwc_sync_xk($xkid, $instance) {
+    global $DB;
 
-    $jwc = enrol_get_plugin('jwc');
-    // iterate through all not enrolled yet users
+    $jwc_enrol = enrol_get_plugin('jwc');
+    $jwc = new jwc_helper();
     if (enrol_is_enabled('jwc')) {
-        $params = array();
-        $onecourse = "";
-        if ($courseid) {
-            $params['courseid'] = $courseid;
-            $onecourse = "AND e.courseid = :courseid";
+
+        // 获得教务处选课表
+        $students = $jwc->get_students($xkid);
+        if (!$students) {
+            $DB->set_field('enrol', 'customchar2', $error, array('id' => $instance->id));
+            return;
         }
-        $sql = "SELECT cm.userid, e.id AS enrolid
-                  FROM {jwc_members} cm
-                  JOIN {enrol} e ON (e.customint1 = cm.jwcid AND e.status = :statusenabled AND e.enrol = 'jwc' $onecourse)
-             LEFT JOIN {user_enrolments} ue ON (ue.enrolid = e.id AND ue.userid = cm.userid)
-                 WHERE ue.id IS NULL";
-        $params['statusenabled'] = ENROL_INSTANCE_ENABLED;
-        $params['courseid'] = $courseid;
-        $rs = $DB->get_recordset_sql($sql, $params);
-        $instances = array(); //cache
-        foreach($rs as $ue) {
-            if (!isset($instances[$ue->enrolid])) {
-                $instances[$ue->enrolid] = $DB->get_record('enrol', array('id'=>$ue->enrolid));
+
+        // 对应本站用户
+        $enrolable_userids = array();
+        foreach ($students as $s) {
+            if ($userid = $DB->get_field('user', 'id', array('auth'=>'cas', 'username'=>$s->code, 'lastname'=>$s->name))) {
+                $enrolable_userids[] = $userid;
             }
-            $jwc->enrol_user($instances[$ue->enrolid], $ue->userid);
         }
-        $rs->close();
-        unset($instances);
-    }
 
-    // unenrol as necessary - ignore enabled flag, we want to get rid of all
-    $sql = "SELECT ue.userid, e.id AS enrolid
-              FROM {user_enrolments} ue
-              JOIN {enrol} e ON (e.id = ue.enrolid AND e.enrol = 'jwc' $onecourse)
-         LEFT JOIN {jwc_members} cm ON (cm.jwcid  = e.customint1 AND cm.userid = ue.userid)
-             WHERE cm.id IS NULL";
-    //TODO: this may use a bit of SQL optimisation
-    $rs = $DB->get_recordset_sql($sql, array('courseid'=>$courseid));
-    $instances = array(); //cache
-    foreach($rs as $ue) {
-        if (!isset($instances[$ue->enrolid])) {
-            $instances[$ue->enrolid] = $DB->get_record('enrol', array('id'=>$ue->enrolid));
+        // 选课
+        foreach ($enrolable_userids as $userid) {
+            $jwc_enrol->enrol_user($instance, $userid, $instance->roleid);
         }
-        $jwc->unenrol_user($instances[$ue->enrolid], $ue->userid);
-    }
-    $rs->close();
-    unset($instances);
 
-    // now assign all necessary roles
-    if (enrol_is_enabled('jwc')) {
-        $sql = "SELECT e.roleid, ue.userid, c.id AS contextid, e.id AS itemid
-                  FROM {user_enrolments} ue
-                  JOIN {enrol} e ON (e.id = ue.enrolid AND e.enrol = 'jwc' AND e.status = :statusenabled $onecourse)
-                  JOIN {context} c ON (c.instanceid = e.courseid AND c.contextlevel = :coursecontext)
-             LEFT JOIN {role_assignments} ra ON (ra.contextid = c.id AND ra.userid = ue.userid AND ra.itemid = e.id AND ra.component = 'enrol_jwc' AND e.roleid = ra.roleid)
-                 WHERE ra.id IS NULL";
-        $params = array();
-        $params['statusenabled'] = ENROL_INSTANCE_ENABLED;
-        $params['coursecontext'] = CONTEXT_COURSE;
-        $params['courseid'] = $courseid;
-
-        $rs = $DB->get_recordset_sql($sql, $params);
-        foreach($rs as $ra) {
-            role_assign($ra->roleid, $ra->userid, $ra->contextid, 'enrol_jwc', $ra->itemid);
+        // 取消教务处删除的选课
+        $where = "enrolid = $instance->id AND userid NOT IN (" . implode(',', $enrolable_userids) . ')';
+        $ues = $DB->get_records_select('user_enrolments', $where);
+        foreach ($ues as $ue) {
+            $jwc_enrol->unenrol_user($instance, $ue->userid);
         }
-        $rs->close();
     }
-
-    // remove unwanted roles - include ignored roles and disabled plugins too
-    $onecourse = $courseid ? "AND c.instanceid = :courseid" : "";
-    $sql = "SELECT ra.roleid, ra.userid, ra.contextid, ra.itemid
-              FROM {role_assignments} ra
-              JOIN {context} c ON (c.id = ra.contextid AND c.contextlevel = :coursecontext $onecourse)
-         LEFT JOIN (SELECT e.id AS enrolid, e.roleid, ue.userid
-                      FROM {user_enrolments} ue
-                      JOIN {enrol} e ON (e.id = ue.enrolid AND e.enrol = 'jwc')
-                   ) x ON (x.enrolid = ra.itemid AND ra.component = 'enrol_jwc' AND x.roleid = ra.roleid AND x.userid = ra.userid)
-             WHERE x.userid IS NULL AND ra.component = 'enrol_jwc'";
-    $params = array('coursecontext' => CONTEXT_COURSE, 'courseid' => $courseid);
-
-    $rs = $DB->get_recordset_sql($sql, $params);
-    foreach($rs as $ra) {
-        role_unassign($ra->roleid, $ra->userid, $ra->contextid, 'enrol_jwc', $ra->itemid);
-    }
-    $rs->close();
-
 }
 
