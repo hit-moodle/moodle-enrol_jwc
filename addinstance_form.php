@@ -60,14 +60,19 @@ class enrol_jwc_addinstance_form extends moodleform {
     }
 
     function validation($data, $files) {
-        global $CFG;
+        global $DB, $CFG, $COURSE;
 
         $errors = parent::validation($data, $files);
 
         require_once("$CFG->dirroot/enrol/jwc/locallib.php");
+
         $jwc = new jwc_helper();
         if (!$jwc->get_courses($data['coursenumber'])) {
             $errors['coursenumber'] = '在教务处查询此课程编号出错：'.$jwc->errormsg;
+        }
+
+        if ($DB->record_exists('enrol', array('enrol'=>'jwc', 'courseid'=>$COURSE->id, 'customchar1'=>$data['coursenumber']))) {
+            $errors['coursenumber'] = '本课程已有一个教务处同步选课实例使用此课程编号';
         }
         return $errors;
     }
