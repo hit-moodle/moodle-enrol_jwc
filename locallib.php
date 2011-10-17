@@ -205,7 +205,12 @@ function enrol_jwc_sync_xk($xkids, $instance) {
         // 获得教务处选课表
         $students = array();
         foreach ($xkids as $xkid) {
-            $students = array_merge($students, $jwc->get_students($xkid));
+            if ($tmp = $jwc->get_students($xkid)) {
+                $students = array_merge($students, $tmp);
+            } else {
+                $DB->set_field('enrol', 'customchar2', $jwc->errormsg, array('id' => $instance->id));
+                return;
+            }
         }
 
         if (!$students) {
