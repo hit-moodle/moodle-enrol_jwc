@@ -187,9 +187,7 @@ function enrol_jwc_sync($courseid = NULL) {
             $DB->set_field('enrol', 'customchar2', $msg, array('id' => $instance->id));
 
             // 开始同步
-            foreach ($xkids as $xkid) {
-                enrol_jwc_sync_xk($xkid, $instance);
-            }
+            enrol_jwc_sync_xk($xkids, $instance);
         }
     }
 }
@@ -197,7 +195,7 @@ function enrol_jwc_sync($courseid = NULL) {
 /**
  * 同步教务处的选课过来
  */
-function enrol_jwc_sync_xk($xkid, $instance) {
+function enrol_jwc_sync_xk($xkids, $instance) {
     global $DB;
 
     $jwc_enrol = enrol_get_plugin('jwc');
@@ -205,7 +203,11 @@ function enrol_jwc_sync_xk($xkid, $instance) {
     if (enrol_is_enabled('jwc')) {
 
         // 获得教务处选课表
-        $students = $jwc->get_students($xkid);
+        $students = array();
+        foreach ($xkids as $xkid) {
+            $students = array_merge($students, $jwc->get_students($xkid));
+        }
+
         if (!$students) {
             $DB->set_field('enrol', 'customchar2', $error, array('id' => $instance->id));
             return;
