@@ -43,6 +43,8 @@ class enrol_jwc_addinstance_form extends moodleform {
 
         $mform->addElement('header','general', get_string('pluginname', 'enrol_jwc'));
 
+        $mform->addElement('html', '与教务管理系统的学生选课同步。只有使用HITID登录的教师和学生才能享用此功能');
+
         $mform->addElement('text', 'coursenumber', get_string('coursenumber', 'enrol_jwc'));
         $mform->setType('coursenumber', PARAM_ALPHANUM);
         $mform->addHelpButton('coursenumber', 'coursenumber', 'enrol_jwc');
