@@ -28,6 +28,6 @@ $string['jwc:config'] = '配置教务处选课实例';
 $string['pluginname'] = '教务处同步';
 $string['pluginname_desc'] = '教务处同步选课插件将教务管理系统的选课同步到本站。';
 $string['coursenumber'] = '课程编号';
-$string['coursenumber_help'] = '课程在教务处的编号。例如：08T1031050
+$string['coursenumber_help'] = '课程在教务处的编号。例如：08T1031050、08C1030000。可在教务管理系统查询到。
 
 很多课程是共享编号的。此时，只有本网络课程主讲教师名下的学生会被加入。';
