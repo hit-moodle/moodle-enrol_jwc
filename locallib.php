@@ -209,12 +209,14 @@ function enrol_jwc_sync($courseid = NULL) {
             }
 
             // 取消教务处删除的选课
-            if (!empty($students)) {
+            if (empty($students)) {
+                $where = "enrolid = $instance->id";
+            } else {
                 $where = "enrolid = $instance->id AND userid NOT IN (" . implode(',', $students) . ')';
-                $ues = $DB->get_records_select('user_enrolments', $where);
-                foreach ($ues as $ue) {
-                    $jwc_enrol->unenrol_user($instance, $ue->userid);
-                }
+            }
+            $ues = $DB->get_records_select('user_enrolments', $where);
+            foreach ($ues as $ue) {
+                $jwc_enrol->unenrol_user($instance, $ue->userid);
             }
         }
     }
