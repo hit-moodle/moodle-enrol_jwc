@@ -29,7 +29,61 @@ defined('MOODLE_INTERNAL') || die();
 require_once($CFG->dirroot . '/enrol/locallib.php');
 
 class jwc_helper {
-    public $errormsg;
+
+    /**
+     * 返回semester学期中编号为coursenumber的课程中teachers下辖所有学生
+     *
+     * 返回数组，成员是用户id
+     * 如无学生，返回空数组
+     * 如遇错误，返回false
+     */
+    public function get_students($coursenumber, array $teachers, $semester, &$return_msg) {
+        global $DB;
+
+        if (! $courses = $this->get_courses($coursenumber, $semester, $return_msg)) {
+            return false;
+        }
+
+        // 匹配教师姓名，找出可同步的课程
+        $xkids = array();
+        foreach ($courses as $course) {
+            foreach ($teachers as $teacher) {
+                if ($teacher->lastname == $course->jsname) {
+                    $xkids[] = $course->xkid;
+                    break;  // 有一个教师与当前课匹配，就够了
+                }
+            }
+        }
+
+        if (empty($xkids)) {
+            $return_msg = '没有可同步的课程';
+            return false;
+        }
+
+        $course = reset($courses);
+        $return_msg = $course->kcname.'-'.implode(',', $xkids);
+
+        // 获取学生
+        $students = array();
+        foreach ($xkids as $xkid) {
+            $params = array();
+            $params['id'] = $xkid;
+            $jwcstr = $this->access('http://xscj.hit.edu.cn/hitjwgl/lxw/getinfoC.asp', $params);
+
+            if ($this->has_error($jwcstr, $return_msg)) {
+                return false;
+            }
+
+            $info = new SimpleXMLElement($jwcstr);
+            foreach ($info->stud->item as $item) {
+                if ($userid = $DB->get_field('user', 'id', array('auth'=>'cas', 'username'=>$item->code, 'lastname'=>$item->name))) {
+                    $students[] = $userid;
+                }
+            }
+        }
+
+        return $students;
+    }
 
     /**
      * 得到编号为coursenumber的所有课程信息
@@ -39,17 +93,13 @@ class jwc_helper {
      * 如编号正确但无对应课程，返回空数组
      * 如遇错误，返回false
      */
-    public function get_courses($coursenumber, $semester = '') {
+    public function get_courses($coursenumber, $semester, &$error) {
         $params = array();
-        if (empty($semester)) {
-            $params['xq'] = get_config('enrol_jwc', 'semester');
-        } else {
-            $params['xq'] = $semester;
-        }
+        $params['xq'] = $semester;
         $params['id'] = $coursenumber;
         $jwcstr = $this->access('http://xscj.hit.edu.cn/hitjwgl/lxw/getinfoD.asp', $params);
 
-        if ($this->has_error($jwcstr)) {
+        if ($this->has_error($jwcstr, $error)) {
             return false;
         }
 
@@ -60,24 +110,6 @@ class jwc_helper {
         }
 
         return $courses;
-    }
-
-    public function get_students($xkid) {
-        $params = array();
-        $params['id'] = $xkid;
-        $jwcstr = $this->access('http://xscj.hit.edu.cn/hitjwgl/lxw/getinfoC.asp', $params);
-
-        if ($this->has_error($jwcstr)) {
-            return false;
-        }
-
-        $info = new SimpleXMLElement($jwcstr);
-        $students = array();
-        foreach ($info->stud->item as $item) {
-            $students[] = $item;
-        }
-
-        return $students;
     }
 
     protected function access($url_base, $params) {
@@ -110,16 +142,16 @@ class jwc_helper {
         return download_file_content($url);
     }
 
-    protected function has_error($jwcstr) {
+    protected function has_error($jwcstr, &$error) {
         $result = false; // no error
 
         if ($jwcstr === false) {
-            $this->errormsg = '访问教务处网站出错';
+            $error = '访问教务处网站出错';
             $result = true;
         } else {
             $info = new SimpleXMLElement($jwcstr);
             if ($info->retu->flag == 0) {
-                $this->errormsg = $info->retu->errorinfo;
+                $error = $info->retu->errorinfo;
                 $result = true;
             }
         }
@@ -140,6 +172,7 @@ function enrol_jwc_sync($courseid = NULL) {
     @set_time_limit(0); //if this fails during upgrade we can continue from cron, no big deal
 
     $jwc = new jwc_helper();
+    $jwc_enrol = enrol_get_plugin('jwc');
 
     if (enrol_is_enabled('jwc')) {
         $params = array();
@@ -161,82 +194,27 @@ function enrol_jwc_sync($courseid = NULL) {
                 continue;
             }
 
-            // 从教务处获取所有使用该编号的课程
-            $courses = $jwc->get_courses($instance->customchar1);
-            if (!$courses) { // 出错
-                $DB->set_field('enrol', 'customchar2', $jwc->errormsg, array('id' => $instance->id));
+            // 从教务处获取所有选修该课程的学生
+            $return_msg = '';
+            $students = $jwc->get_students($instance->customchar1, $teachers, $jwc_enrol->get_config('semester'), $return_msg);
+            $DB->set_field('enrol', 'customchar2', $return_msg, array('id' => $instance->id));
+            if (!$students) { // 出错
                 continue; // skip this instance. 就算出错，也别清理选课，以免意外。管理员更改学期名时再清理所有选课
             }
 
-            // 匹配教师姓名，找出可同步的课程
-            $xkids = array();
-            foreach ($courses as $course) {
-                foreach ($teachers as $teacher) {
-                    if ($teacher->lastname == $course->jsname) {
-                        $xkids[] = $course->xkid;
-                        break;  // 有一个教师与当前课匹配，就够了
-                    }
-                }
-            }
-            if (empty($xkids)) {
-                $msg = '没有可同步的课程';
-            } else {
-                $course = reset($courses);
-                $msg = $course->kcname.'-'.implode(',', $xkids);
-            }
-            $DB->set_field('enrol', 'customchar2', $msg, array('id' => $instance->id));
-
             // 开始同步
-            enrol_jwc_sync_xk($xkids, $instance);
-        }
-    }
-}
-
-/**
- * 同步教务处的选课过来
- */
-function enrol_jwc_sync_xk($xkids, $instance) {
-    global $DB;
-
-    $jwc_enrol = enrol_get_plugin('jwc');
-    $jwc = new jwc_helper();
-    if (enrol_is_enabled('jwc')) {
-
-        // 获得教务处选课表
-        $students = array();
-        foreach ($xkids as $xkid) {
-            if ($tmp = $jwc->get_students($xkid)) {
-                $students = array_merge($students, $tmp);
-            } else {
-                $DB->set_field('enrol', 'customchar2', $jwc->errormsg, array('id' => $instance->id));
-                return;
+            // 选课
+            foreach ($students as $userid) {
+                $jwc_enrol->enrol_user($instance, $userid, $instance->roleid);
             }
-        }
 
-        if (!$students) {
-            $DB->set_field('enrol', 'customchar2', $jwc->errormsg, array('id' => $instance->id));
-            return;
-        }
-
-        // 对应本站用户
-        $enrolable_userids = array();
-        foreach ($students as $s) {
-            if ($userid = $DB->get_field('user', 'id', array('auth'=>'cas', 'username'=>$s->code, 'lastname'=>$s->name))) {
-                $enrolable_userids[] = $userid;
-            }
-        }
-
-        // 选课
-        foreach ($enrolable_userids as $userid) {
-            $jwc_enrol->enrol_user($instance, $userid, $instance->roleid);
-        }
-
-        // 取消教务处删除的选课
-        if (!empty($enrolable_userids)) {
-            $where = "enrolid = $instance->id AND userid NOT IN (" . implode(',', $enrolable_userids) . ')';
-            $ues = $DB->get_records_select('user_enrolments', $where);
-            foreach ($ues as $ue) {
-                $jwc_enrol->unenrol_user($instance, $ue->userid);
+            // 取消教务处删除的选课
+            if (!empty($students)) {
+                $where = "enrolid = $instance->id AND userid NOT IN (" . implode(',', $students) . ')';
+                $ues = $DB->get_records_select('user_enrolments', $where);
+                foreach ($ues as $ue) {
+                    $jwc_enrol->unenrol_user($instance, $ue->userid);
+                }
             }
         }
     }
