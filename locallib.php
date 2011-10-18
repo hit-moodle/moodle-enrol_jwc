@@ -67,7 +67,7 @@ class jwc_helper {
         $params['id'] = $xkid;
         $jwcstr = $this->access('http://xscj.hit.edu.cn/hitjwgl/lxw/getinfoC.asp', $params);
 
-        if ($error = $this->has_error($jwcstr)) {
+        if ($this->has_error($jwcstr)) {
             return false;
         }
 
@@ -214,7 +214,7 @@ function enrol_jwc_sync_xk($xkids, $instance) {
         }
 
         if (!$students) {
-            $DB->set_field('enrol', 'customchar2', $error, array('id' => $instance->id));
+            $DB->set_field('enrol', 'customchar2', $jwc->errormsg, array('id' => $instance->id));
             return;
         }
 
