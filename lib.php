@@ -133,6 +133,28 @@ class enrol_jwc_plugin extends enrol_plugin {
     }
 
     /**
+     * Validates course edit form data
+     *
+     * @param object $instance enrol instance or null if does not exist yet
+     * @param array $data
+     * @param object $context context of existing course or parent category if course does not exist
+     * @return array errors array
+     */
+    public function course_edit_validation($instance, array $data, $context) {
+        global $CFG;
+        require_once("$CFG->dirroot/enrol/jwc/locallib.php");
+
+        $errors = array();
+        $jwc = new jwc_helper();
+        $errormsg = '';
+        if (!$jwc->get_all_courses($data['idnumber'], $this->get_config('semester'), $errormsg)) {
+            $errors['idnumber'] = '在教务处查询此课程编号出错：'.$errormsg.'（留空可跳过此检查）';
+        }
+
+        return $errors;
+    }
+
+    /**
      * Called after updating/inserting course.
      *
      * @param bool $inserted true if course just inserted
