@@ -69,8 +69,9 @@ class enrol_jwc_addinstance_form extends moodleform {
         require_once("$CFG->dirroot/enrol/jwc/locallib.php");
 
         $jwc = new jwc_helper();
-        if (!$jwc->get_all_courses($data['coursenumber'], get_config('enrol_jwc', 'semester'))) {
-            $errors['coursenumber'] = '在教务处查询此课程编号出错：'.$jwc->errormsg;
+        $errormsg = '';
+        if (!$jwc->get_all_courses($data['coursenumber'], get_config('enrol_jwc', 'semester'), $errormsg)) {
+            $errors['coursenumber'] = '在教务处查询此课程编号出错：'.$errormsg;
         }
 
         if ($DB->record_exists('enrol', array('enrol'=>'jwc', 'courseid'=>$COURSE->id, 'customchar1'=>$data['coursenumber']))) {
