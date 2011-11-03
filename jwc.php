@@ -12,34 +12,22 @@ class jwc_helper {
     public function get_students($coursenumber, array $teachers, $semester, &$return_msg) {
         global $DB;
 
-        if (! $courses = $this->get_courses($coursenumber, $semester, $return_msg)) {
+        $courses = $this->get_matched_courses($coursenumber, $teachers, $semester, $return_msg);
+        if ($courses === false) {
             return false;
-        }
-
-        // 匹配教师姓名，找出可同步的课程
-        $xkids = array();
-        foreach ($courses as $course) {
-            foreach ($teachers as $teacher) {
-                if ($teacher->lastname == $course->jsname) {
-                    $xkids[] = $course->xkid;
-                    break;  // 有一个教师与当前课匹配，就够了
-                }
-            }
-        }
-
-        if (empty($xkids)) {
+        } else if (empty($courses)) {
             $return_msg = '没有可同步的课程';
             return false;
         }
 
         $course = reset($courses);
-        $return_msg = $course->kcname.'-'.implode(',', $xkids);
+        $return_msg = $course->kcname.'-对应'.count($courses).'个教务处选课';
 
         // 获取学生
         $students = array();
-        foreach ($xkids as $xkid) {
+        foreach ($courses as $course) {
             $params = array();
-            $params['id'] = $xkid;
+            $params['id'] = $course->xkid;
             $jwcstr = $this->access('http://xscj.hit.edu.cn/hitjwgl/lxw/getinfoC.asp', $params);
 
             if ($this->has_error($jwcstr, $return_msg)) {
@@ -65,7 +53,7 @@ class jwc_helper {
      * 如编号正确但无对应课程，返回空数组
      * 如遇错误，返回false
      */
-    public function get_courses($coursenumber, $semester, &$error) {
+    public function get_all_courses($coursenumber, $semester, &$error) {
         $params = array();
         $params['xq'] = $semester;
         $params['id'] = $coursenumber;
@@ -82,6 +70,34 @@ class jwc_helper {
         }
 
         return $courses;
+    }
+
+    /**
+     * 返回semester学期中编号为coursenumber的课程中teachers对应的教务处课程
+     *
+     * 返回数组，成员是用户id
+     * 如无对应选课，返回空数组
+     * 如遇错误，返回false
+     */
+    public function get_matched_courses($coursenumber, array $teachers, $semester, &$return_msg) {
+        global $DB;
+
+        if (! $courses = $this->get_all_courses($coursenumber, $semester, $return_msg)) {
+            return false;
+        }
+
+        // 匹配教师姓名，找出可同步的课程
+        $matched = array();
+        foreach ($courses as $course) {
+            foreach ($teachers as $teacher) {
+                if ($teacher->lastname == $course->jsname) {
+                    $matched[] = $course;
+                    break;  // 有一个教师与当前课匹配，就够了
+                }
+            }
+        }
+
+        return $matched;
     }
 
     protected function access($url_base, $params) {
