@@ -141,16 +141,29 @@ class enrol_jwc_plugin extends enrol_plugin {
      * @return void
      */
     public function course_updated($inserted, $course, $data) {
-        global $CFG;
+        global $CFG, $DB;
 
         if (!$inserted) {
+            $instance = $DB->get_record('enrol', array('enrol' => 'jwc', 'courseid' => $course->id), '*', IGNORE_MULTIPLE);
+            if (!empty($course->idnumber)) {
+                if ($instance) {
+                    $instance->customchar1 = $course->idnumber;
+                    $DB->update_record('enrol', $instance);
+                } else {
+                    $this->add_instance($course, array('customchar1'=>$course->idnumber, $this->get_config('roleid')));
+                }
+            } else if ($instance) { // remove old instance
+                $this->delete_instance($instance);
+            }
+
             // sync jwc enrols
             require_once("$CFG->dirroot/enrol/jwc/locallib.php");
             enrol_jwc_sync($course->id);
         } else {
-            // jwcs are never inserted automatically
+            if (!empty($course->idnumber)) {
+                $this->add_instance($course, array('customchar1'=>$course->idnumber, $this->get_config('roleid')));
+            }
         }
-
     }
 }
 
