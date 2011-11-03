@@ -100,6 +100,12 @@ class jwc_helper {
         return $matched;
     }
 
+    public function export($xkid, $key) {
+        $url = "http://xscj.hit.edu.cn/hitjwgl/lxw/uploadgrade.asp?xkid=$xkid&key=$key";
+        echo $url;
+        return download_file_content($url);
+    }
+
     protected function access($url_base, $params) {
         global $CFG;
 
