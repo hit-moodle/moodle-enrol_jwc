@@ -102,8 +102,14 @@ class jwc_helper {
 
     public function export($xkid, $key) {
         $url = "http://xscj.hit.edu.cn/hitjwgl/lxw/uploadgrade.asp?xkid=$xkid&key=$key";
-        echo $url;
-        return download_file_content($url);
+        $ret = download_file_content($url);
+
+        if ($ret) {
+            // 是否出错
+            $ret = !strstr(strip_tags($ret), 'fail');
+        }
+
+        return $ret;
     }
 
     protected function access($url_base, $params) {
