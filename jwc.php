@@ -100,13 +100,17 @@ class jwc_helper {
         return $matched;
     }
 
-    public function export($xkid, $key) {
+    public function export($xkid, $key, &$return_msg) {
         $url = "http://xscj.hit.edu.cn/hitjwgl/lxw/uploadgrade.asp?xkid=$xkid&key=$key";
+        // echo $url.'<br />';
         $ret = download_file_content($url);
 
         if ($ret) {
             // 是否出错
-            $ret = !strstr(strip_tags($ret), 'fail');
+            if (!strstr(strip_tags($ret), 'success')) {
+               $return_msg = trim(strip_tags($ret));
+               $ret = false;
+            }
         }
 
         return $ret;
