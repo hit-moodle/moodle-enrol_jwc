@@ -37,7 +37,7 @@ class jwc_helper {
             $info = new SimpleXMLElement($jwcstr);
             foreach ($info->stud->item as $item) {
                 if ($userid = $DB->get_field('user', 'id', array('auth'=>'cas', 'username'=>$item->code, 'lastname'=>$item->name))) {
-                    $students[] = $userid;
+                    $students[$userid] = $userid;
                 }
             }
         }
