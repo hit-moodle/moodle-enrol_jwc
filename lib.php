@@ -172,7 +172,7 @@ class enrol_jwc_plugin extends enrol_plugin {
                     $instance->customchar1 = $course->idnumber;
                     $DB->update_record('enrol', $instance);
                 } else {
-                    $this->add_instance($course, array('customchar1'=>$course->idnumber, $this->get_config('roleid')));
+                    $this->add_instance($course, array('customchar1' => $course->idnumber, 'roleid' => $this->get_config('roleid')));
                 }
             } else if ($instance) { // remove old instance
                 $this->delete_instance($instance);
@@ -183,7 +183,7 @@ class enrol_jwc_plugin extends enrol_plugin {
             enrol_jwc_sync($course->id);
         } else {
             if (!empty($course->idnumber)) {
-                $this->add_instance($course, array('customchar1'=>$course->idnumber, $this->get_config('roleid')));
+                $this->add_instance($course, array('customchar1' => $course->idnumber, 'roleid' => $this->get_config('roleid')));
             }
         }
     }
