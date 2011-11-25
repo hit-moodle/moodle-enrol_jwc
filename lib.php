@@ -142,13 +142,15 @@ class enrol_jwc_plugin extends enrol_plugin {
      */
     public function course_edit_validation($instance, array $data, $context) {
         global $CFG;
-        require_once("$CFG->dirroot/enrol/jwc/locallib.php");
-
         $errors = array();
-        $jwc = new jwc_helper();
-        $errormsg = '';
-        if (!$jwc->get_all_courses($data['idnumber'], $this->get_config('semester'), $errormsg)) {
-            $errors['idnumber'] = '在教务处查询此课程编号出错：'.$errormsg.'（留空可跳过此检查）';
+
+        if (!empty($data['idnumber'])) {
+            require_once("$CFG->dirroot/enrol/jwc/locallib.php");
+            $jwc = new jwc_helper();
+            $errormsg = '';
+            if (!$jwc->get_all_courses($data['idnumber'], $this->get_config('semester'), $errormsg)) {
+                $errors['idnumber'] = '在教务处查询此课程编号出错：'.$errormsg.'（留空可跳过此检查）';
+            }
         }
 
         return $errors;
@@ -166,16 +168,11 @@ class enrol_jwc_plugin extends enrol_plugin {
         global $CFG, $DB;
 
         if (!$inserted) {
-            $instance = $DB->get_record('enrol', array('enrol' => 'jwc', 'courseid' => $course->id), '*', IGNORE_MULTIPLE);
             if (!empty($course->idnumber)) {
-                if ($instance) {
-                    $instance->customchar1 = $course->idnumber;
-                    $DB->update_record('enrol', $instance);
-                } else {
+                $instance = $DB->get_record('enrol', array('enrol' => 'jwc', 'courseid' => $course->id, 'customchar1' => $course->idnumber), '*', IGNORE_MULTIPLE);
+                if (!$instance) {  // Always keep old instance and add new instance if idnumber changed
                     $this->add_instance($course, array('customchar1' => $course->idnumber, 'roleid' => $this->get_config('roleid')));
                 }
-            } else if ($instance) { // remove old instance
-                $this->delete_instance($instance);
             }
 
             // sync jwc enrols
