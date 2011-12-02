@@ -7,7 +7,7 @@ class jwc_helper {
      *
      * 返回数组，成员是用户id
      * 如无学生，返回空数组
-     * 如遇错误，返回false
+     * 如遇错误，返回false，return_msg里保存错误信息
      */
     public function get_students($coursenumber, array $teachers, $semester, &$return_msg) {
         global $DB;
