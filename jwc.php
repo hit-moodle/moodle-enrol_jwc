@@ -7,9 +7,10 @@ class jwc_helper {
      *
      * 返回数组，成员是用户id
      * 如无学生，返回空数组
+     * 如远程学生没有可匹配的本地账号，存入nonexist_students数组
      * 如遇错误，返回false，return_msg里保存错误信息
      */
-    public function get_students($coursenumber, array $teachers, $semester, &$return_msg) {
+    public function get_students($coursenumber, array $teachers, $semester, &$return_msg, &$nonexist_students = null) {
         global $DB;
 
         $courses = $this->get_matched_courses($coursenumber, $teachers, $semester, $return_msg);
@@ -26,18 +27,18 @@ class jwc_helper {
         // 获取学生
         $students = array();
         foreach ($courses as $course) {
-            $params = array();
-            $params['id'] = $course->xkid;
-            $jwcstr = $this->access('http://xscj.hit.edu.cn/hitjwgl/lxw/getinfoC.asp', $params);
-
-            if ($this->has_error($jwcstr, $return_msg)) {
+            $raw_students = $this->get_all_students($course->xkid, $return_msg);
+            if (!$raw_students) {
                 return false;
             }
 
-            $info = new SimpleXMLElement($jwcstr);
-            foreach ($info->stud->item as $item) {
+            foreach ($raw_students as $item) {
                 if ($userid = $DB->get_field('user', 'id', array('auth'=>'cas', 'username'=>$item->code, 'lastname'=>$item->name))) {
                     $students[$userid] = $userid;
+                } else {
+                    if (is_array($nonexist_students)) {
+                        $nonexist_students[] = $item;
+                    }
                 }
             }
         }
@@ -48,7 +49,6 @@ class jwc_helper {
     /**
      * 得到编号为coursenumber的所有课程信息
      *
-     * 如果$semester为空，表示访问当前学期
      * 返回数组，成员是课程对象
      * 如编号正确但无对应课程，返回空数组
      * 如遇错误，返回false
@@ -70,6 +70,22 @@ class jwc_helper {
         }
 
         return $courses;
+    }
+
+    /**
+     * 得到选课ID为xkid的课程中所有学生
+     */
+    public function get_all_students($xkid, &$return_msg) {
+        $params = array();
+        $params['id'] = $xkid;
+        $jwcstr = $this->access('http://xscj.hit.edu.cn/hitjwgl/lxw/getinfoC.asp', $params);
+
+        if ($this->has_error($jwcstr, $return_msg)) {
+            return false;
+        }
+
+        $info = new SimpleXMLElement($jwcstr);
+        return $info->stud->item;
     }
 
     /**
